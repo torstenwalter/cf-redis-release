@@ -1,0 +1,60 @@
+<%
+dedicated_node_addresses = p('redis.broker.dedicated_nodes').clone
+
+if dedicated_node_addresses.empty?
+  link('dedicated_node').instances.each do |instance|
+    dedicated_node_addresses.push(instance.address)
+  end
+end
+
+# broker should fail if the dedicated nodes addresses are not ip addresses.
+# This is our defense in case we accidentally have DNS turned on in a
+# BOSH Director 263+ world. Broker's statefile.json is using ip addresses to
+# uniquely identify and manage dedicated nodes thus mixing DNS with it
+# will corrupt it. Related story #150214496
+valid_ip_field = '(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)'
+ip_regex = Regexp.new("^(#{valid_ip_field}\.){3}#{valid_ip_field}$")
+
+dedicated_node_addresses.each do |address|
+  unless ip_regex.match(address.strip)
+    raise 'The broker only supports IP addresses for dedicated nodes'
+  end
+end
+%>
+---
+redis:
+  service_name: <%= p('redis.broker.service_name') %>
+  service_id: <%= p('redis.broker.service_id') %>
+  shared_vm_plan_id: <%= p('redis.broker.shared_vm_plan_id') %>
+  dedicated_vm_plan_id: <%= p('redis.broker.dedicated_vm_plan_id') %>
+  host: <%= spec.ip %>
+  data_directory: <%= p('redis.data_directory') %>
+  pidfile_directory: <%= p('redis.pidfile_directory') %>
+  redis_conf_path: <%= p('redis.conf_path') %>
+  log_directory: <%= p('redis.log_directory') %>
+  process_check_interval: <%= p('redis.broker.process_check_interval') %>
+  start_redis_timeout: <%= p('redis.broker.start_redis_timeout') %>
+  service_instance_limit: <%= p('redis.broker.service_instance_limit') %>
+  provider_display_name: <%= p('redis.broker.provider_display_name') %>
+  documentation_url: <%= p('redis.broker.documentation_url') %>
+  support_url: <%= p('redis.broker.support_url') %>
+  display_name: <%= p('redis.broker.display_name') %>
+  long_description: <%= p('redis.broker.long_description') %>
+  description: <%= p('redis.broker.description') %>
+  icon_image: <%= p('redis.broker.icon_image') %>
+  dedicated:
+    nodes: <%= dedicated_node_addresses %>
+    port: <%= p('redis.broker.dedicated_port') %>
+    statefile_path: <%= p('redis.statefile_path') %>
+
+auth:
+  username: <%= p('redis.broker.auth.username') %>
+  password: <%= p('redis.broker.auth.password') %>
+
+backend_host: localhost
+backend_port: <%= p('redis.broker.backend_port') %>
+agent_port: 4443
+
+monit_executable_path: /var/vcap/bosh/bin/monit
+redis_server_executable_path: /var/vcap/packages/redis/bin/redis-server
+consistency_check_interval_seconds: <%= p('redis.broker.consistency_check_interval') %>
