@@ -1,5 +1,5 @@
 ---
-name: cf-redis-broker
+name: shared-node
 
 templates:
   pre-start.erb: bin/pre-start
